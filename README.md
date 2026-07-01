@@ -31,7 +31,7 @@ Build an AI Research Assistant that can:
 6. Generate literature review summaries
     
 
-How RAG Works
+## How RAG Works
 
 Instead of training a model on all papers:
 
@@ -67,11 +67,14 @@ Retrieve relevant chunks
 
 ### Step 6
 
+
 LLM generates answer using retrieved content
 
 This is RAG.
 
-Why Multi-Agent?
+
+
+## Why Multi-Agent?
 
 Instead of one AI doing everything:
 
