@@ -36,8 +36,12 @@ def retrieve_data(uploaded_files):
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     client = chromadb.PersistentClient(path="./chroma_db")    
 
-    vectordb = Chroma.from_documents(doc_chunks,embeddings, client=client, collection_name="my_collection")
+    vectordb = Chroma.from_documents(doc_chunks,embeddings, client=client, collection_name="research_papers")
     
     retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+    
+    return retriever
+  
+  
     
     
