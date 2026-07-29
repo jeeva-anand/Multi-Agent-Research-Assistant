@@ -21,13 +21,23 @@ def retrieve_data(uploaded_files):
   temp_dir = tempfile.TemporaryDirectory()
   
   for file in uploaded_files:
-    file_path = os.path.join(temp_dir.name,file)
+    temp_filepath = os.path.join(temp_dir.name, file)
     
-    with open(file_path, "wb") as f:
+    with open(temp_filepath, "wb") as f:
       f.write(file.getValue())
     
-  text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-  embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+    loader = PyMuPDFLoader(temp_filepath)
+    doc.extend(loader.load())
     
+    
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=300)
+   
+    doc_chunks = text_splitter.split_documents(doc)
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    client = chromadb.PersistentClient(path="./chroma_db")    
 
-print(os.path)
+    vectordb = Chroma.from_documents(doc_chunks,embeddings, client=client, collection_name="my_collection")
+    
+    retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+    
+    
