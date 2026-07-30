@@ -1,87 +1,362 @@
-
-from langchain_ollama import ChatOllama
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_core.prompts import ChatPromptTemplate
-# from langchain.prompts import PromptTemplate
-from langchain_community.chat_message_histories import StreamlitChatMessageHistory
-from langchain_core.callbacks.base import BaseCallbackHandler
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
-
-
-
 import streamlit as st
 import chromadb
 import tempfile
 import os
+import pandas as pd
+
+from operator import itemgetter
+
+from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.callbacks.base import BaseCallbackHandler
+
+from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from langchain_chroma import Chroma
+from langchain_community.chat_message_histories import StreamlitChatMessageHistory
 
 
-st.set_page_config(page_title="Multi-Agent-Research-Assistant", page_icon="")
-st.title("Multi-Agent-Research-Assistant")
 
-
-@st.cache_resource(ttl="1hr")
-def retrieve_data(uploaded_files):
-  doc = []
-  temp_dir = tempfile.TemporaryDirectory()
-  
-  for file in uploaded_files:
-    temp_filepath = os.path.join(temp_dir.name, file.name)    
-    with open(temp_filepath, "wb") as f:
-      f.write(file.getvalue())    
-    loader = PyMuPDFLoader(temp_filepath)
-    doc.extend(loader.load())      
-      
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=300)   
-    doc_chunks = text_splitter.split_documents(doc)
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    client = chromadb.PersistentClient(path="./chroma_db")    
-    vectordb = Chroma.from_documents(doc_chunks,embeddings, client=client, collection_name="research_papers")    
-    retriever = vectordb.as_retriever(search_kwargs={"k": 3})    
-    return retriever
-  
-  
-def StreamHandler(BaseCallbackHandler):
-  def __init__(self, container, initial_text=""):
-    self.container = container
-    self.text = initial_text
-    
-  def on_llm_new_token(self, token, **kwargs):
-    self.text += token
-    self.container.markdown(self.text + "")
-    
-
-
-  
-uploaded_files = st.sidebar.file_uploader(
-    label="Upload PDF files", type=["pdf"],
-    accept_multiple_files=True
+st.set_page_config(
+    page_title="ResearchPilot AI",
+    page_icon="",
+    layout="wide"
 )
-if not uploaded_files:
-  st.info("Please upload PDF documents to continue.")
-  st.stop()
 
-# Create retriever object based on uploaded PDFs
-retriever = retrieve_data(uploaded_files)
+
+st.markdown(
+    """
+<style>
+
+.main {
+    background-color:#0E1117;
+}
+
+
+h1 {
+    font-size:45px !important;
+    font-weight:800;
+}
+
+
+.subtitle {
+
+    color:#9CA3AF;
+    font-size:18px;
+
+}
+
+
+.card {
+
+    background:#161B22;
+    padding:20px;
+    border-radius:15px;
+    border:1px solid #30363D;
+
+}
+
+
+.status {
+
+    padding:10px;
+    border-radius:10px;
+    background:#111827;
+
+}
+
+
+</style>
+
+""",
+    unsafe_allow_html=True
+)
+
+
+
+
+st.markdown(
+    """
+#  ResearchPilot AI
+
+<div class="subtitle">
+Multi-Agent RAG Research Assistant powered by Llama 3.2, ChromaDB and LangChain
+</div>
+
+<br>
+
+""",
+    unsafe_allow_html=True
+)
+
+
+
+message_history = StreamlitChatMessageHistory(
+    key="research_chat"
+)
+
+
+
+@st.cache_resource(ttl="1h")
+def create_vector_db(files):
+
+    documents = []
+
+    temp_dir = tempfile.TemporaryDirectory()
+
+    for file in files:
+
+        path = os.path.join(
+            temp_dir.name,
+            file.name
+        )
+
+        with open(path, "wb") as f:
+            f.write(file.getvalue())
+
+        loader = PyMuPDFLoader(path)
+
+        documents.extend(
+            loader.load()
+        )
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+
+    chunks = splitter.split_documents(
+        documents
+    )
+
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+    client = chromadb.PersistentClient(
+        path="./chroma_db"
+    )
+
+    vector_db = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        client=client,
+        collection_name="researchpilot"
+    )
+
+    return vector_db.as_retriever(
+        search_kwargs={
+            "k": 4
+        }
+    ), len(chunks)
+
+
+
+
+with st.sidebar:
+
+    st.markdown(
+        """
+    ##  Configuration
+    """
+    )
+
+    uploaded_files = st.file_uploader(
+        "Upload Research Papers",
+        type="pdf",
+        accept_multiple_files=True
+    )
+
+    st.divider()
+
+    st.markdown(
+        """
+    ###  AI Stack
+
+     Llama 3.2 3B  
+     Chroma Vector DB  
+     MiniLM Embeddings  
+     LangChain RAG  
+
+    """
+    )
+
+    st.divider()
+
+    # st.info(
+    #     """
+    #     Upload PDFs and ask questions.
+    #     The assistant retrieves relevant
+    #     sections before answering.
+    #     """
+    # )
+
+
+if not uploaded_files:
+
+    st.warning(
+        "Upload PDF documents to activate ResearchPilot AI"
+    )
+
+    st.stop()
+
+
+
+retriever, chunk_count = create_vector_db(
+    uploaded_files
+)
+
+
+with st.sidebar:
+
+    st.success(
+        f"📚 {chunk_count} chunks indexed"
+    )
+
 
 
 llm = ChatOllama(
-    model="qwen2.5:7b",
-    temperature=0.2)
+    model="llama3.2:3b",
+    temperature=0,
+    streaming=True
+)
 
-qa_template = """
-              Use only the following pieces of context to answer the question at the end.
-              If you don't know the answer, just say that you don't know,
-              don't try to make up an answer. Keep the answer as concise as possible.
 
-              {context}
 
-              Question: {question}
-              """
-              
-prompt = ChatPromptTemplate.from_template(qa_template)
+prompt = ChatPromptTemplate.from_template(
+
+    """
+You are an expert research assistant.
+
+Use only the provided context.
+
+Conversation history:
+{history}
+
+
+Context:
+{context}
+
+
+Question:
+{question}
+
+
+Provide a clear technical answer.
+"""
+)
+
 
 def format_docs(docs):
-  return "\n\n".join([d.page_content for d in docs])
 
+    return "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
+
+
+def format_history():
+
+    text = ""
+
+    for msg in message_history.messages:
+
+        text += (
+            f"{msg.type}: "
+            f"{msg.content}\n"
+        )
+
+    return text
+
+
+
+
+for msg in message_history.messages:
+
+    st.chat_message(
+        msg.type
+    ).write(
+        msg.content
+    )
+
+
+
+question = st.chat_input(
+    "Ask about your research papers..."
+)
+
+
+if question:
+
+    st.chat_message(
+        "user"
+    ).write(question)
+
+    message_history.add_user_message(
+        question
+    )
+
+    with st.chat_message(
+        "assistant"
+    ):
+
+        with st.spinner(
+            "🔎 Searching documents..."
+        ):
+
+            docs = retriever.invoke(
+                question
+            )
+
+            context = format_docs(
+                docs
+            )
+
+            response = llm.invoke(
+
+                prompt.format(
+
+                    history=format_history(),
+
+                    context=context,
+
+                    question=question
+                )
+
+            )
+
+        st.write(
+            response.content
+        )
+
+        with st.expander(
+            "📚 Sources"
+        ):
+
+            source_data = []
+
+            for d in docs:
+
+                source_data.append(
+                    {
+                        "File":
+                        d.metadata.get("source"),
+
+                        "Page":
+                        d.metadata.get("page"),
+
+                        "Preview":
+                        d.page_content[:200]
+                    }
+                )
+
+            st.dataframe(
+                pd.DataFrame(source_data)
+            )
+
+    message_history.add_ai_message(
+        response.content
+    )
