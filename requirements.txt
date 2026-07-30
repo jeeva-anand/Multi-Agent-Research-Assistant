@@ -1,0 +1,9 @@
+langchain_huggingface
+langchain-chroma
+chromadb
+PyMuPDF
+pyngrok
+streamlit
+langchain-community
+langchain-ollama
+langchain
