@@ -3,18 +3,14 @@ import chromadb
 import tempfile
 import os
 import pandas as pd
-
 from operator import itemgetter
-
 from langchain_ollama import ChatOllama
 from langchain_huggingface import HuggingFaceEmbeddings
-
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.callbacks.base import BaseCallbackHandler
 
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 from langchain_chroma import Chroma
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
 
@@ -35,13 +31,10 @@ st.markdown(
     background-color:#0E1117;
 }
 
-
 h1 {
     font-size:45px !important;
     font-weight:800;
 }
-
-
 .subtitle {
 
     color:#9CA3AF;
