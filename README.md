@@ -1,4 +1,4 @@
-# Development of a Multi-Agent Retrieval-Augmented Generation Framework for Intelligent Academic Research Assistance
+# Multi-Agent RAG Research Assistant powered by Llama 3.2, ChromaDB and LangChain
 
 
 ## The Real-World Problem
@@ -72,7 +72,7 @@ LLM generates answer using retrieved content
 
 This is RAG.
 
-
+    
 
 ## Why Multi-Agent?
 
