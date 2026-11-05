@@ -1,4 +1,5 @@
 langchain_huggingface
+sentence-transformers
 langchain-chroma
 chromadb
 PyMuPDF
